@@ -17,16 +17,98 @@ names(Activity_Monitoring)
 ## What is mean total number of steps taken per day?
 ```{r codechunk2}
 Activity_Monitoring$date <- as.Date(Activity_Monitoring$date, "%Y-%m-%d")
-```
-## What is the average daily activity pattern?
-```{r codechunk3}
 
+TotalSteps <- aggregate(steps ~ date, data = Activity_Monitoring, sum, na.rm = TRUE)
+head(TotalSteps)
+
+hist(TotalSteps$steps, 
+     main = "Total number of steps taken per day",
+     xlab = "day", 
+     col = "blue")
+
+mean_Total_Steps <- mean(TotalSteps$steps, na.rm=TRUE)
+median_Total_Steps <- median(TotalSteps$steps, na.rm=TRUE)
 ```
+
+The mean total number of steps taken per day is `r mean_Total_Steps` .
+The median of the total number of steps taken per day is `r median_Total_Steps`r .
+
+## What is the average daily activity pattern?
+
+The interval variable is the 5 minute interval identifier. (x-axis).
+The average numbers of steps taken across all days is the mean of the steps taken (y-axis).
+
+```{r codechunk3}
+Time_Series_Average_Steps <- tapply(Activity_Monitoring$steps, Activity_Monitoring$interval, mean, na.rm = TRUE)
+
+plot(row.names(Time_Series_Average_Steps),
+     Time_Series_Average_Steps,
+     type = "l",
+     xlab = "Interval",
+     ylab = "Average steps across all Days", main = "Average daily activity pattern",
+     col = "blue")
+
+Max_Interval <- which.max(Time_Series_Average_Steps)
+```
+
+The 5-minute interval that contains the maximum of steps, on average across all days, is `r names(Max_Interval)`.
+
 ## Imputing missing values
 ```{r codechunk4}
+Missing_Values <- sum(is.na(Activity_Monitoring))
 
+Missing_Value_Positions <- which(is.na(Activity_Monitoring$steps))
+
+AverageSteps <- aggregate(steps ~ interval, data = Activity_Monitoring, FUN = mean)
+Missing_Value_Fill <- numeric()
+for (i in 1:nrow(Activity_Monitoring)) {
+    Measurement <- Activity_Monitoring[i, ]
+    if (is.na(Measurement$steps)) {
+        steps <- subset(AverageSteps, interval == Measurement$interval)$steps
+    } else {
+        steps <- Measurement$steps
+    }
+    Missing_Value_Fill <- c(Missing_Value_Fill, steps)
+}
+
+New_Activity_Monitoring <- Activity_Monitoring
+New_Activity_Monitoring$steps <- Missing_Value_Fill
+
+New_Total_Steps <- aggregate(steps ~ date, data = New_Activity_Monitoring, sum, na.rm = TRUE)
+
+hist(New_Total_Steps$steps, 
+     main = "Total number of steps taken per day",
+     xlab = "day", 
+     col = "blue")
 ```
+
+The total number of missing values is `r Missing_Values`.
+
+The mean total number of steps taken per day is `r mean(New_Total_Steps$steps)` .
+The median of the total number of steps taken per day is `r median(New_Total_Steps$steps)`.
+
 ## Are there differences in activity patterns between weekdays and weekends?
 ```{r codechunk5}
+Day <- weekdays(New_Activity_Monitoring$date)
+DayLevel <- vector()
+for (i in 1:nrow(New_Activity_Monitoring)) {
+    if (Day[i] == "Saturday") {
+        DayLevel[i] <- "Weekend"
+    } else if (Day[i] == "Sunday") {
+        DayLevel[i] <- "Weekend"
+    } else {
+        DayLevel[i] <- "Weekday"
+    }
+}
+New_Activity_Monitoring$DayLevel <- DayLevel
+New_Activity_Monitoring$DayLevel <- factor(New_Activity_Monitoring$DayLevel)
+
+StepsByDay <- aggregate(steps ~ interval + DayLevel, data = New_Activity_Monitoring, mean)
+names(StepsByDay) <- c("interval", "daylevel", "steps")
+
+library(lattice)
+
+xyplot(steps ~ interval | daylevel, StepsByDay, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
 
 ```
